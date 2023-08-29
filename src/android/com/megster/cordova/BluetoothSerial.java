@@ -353,14 +353,9 @@ public class BluetoothSerial extends CordovaPlugin {
     bluetoothAdapter.startDiscovery();
   }
 
-  private JSONObject deviceToJSON(BluetoothDevice device) throws JSONException {
-    JSONObject json = new JSONObject();
-    if (ActivityCompat.checkSelfPermission(this.cordova.getContext(), Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-      ActivityCompat.requestPermissions(this.cordova.getActivity(), new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 225);
-
-      return null;
-    }
-    json.put("name", device.getName());
+    private JSONObject deviceToJSON(BluetoothDevice device) throws JSONException {
+        JSONObject json = new JSONObject();
+        json.put("name", device.getName());
         json.put("address", device.getAddress());
         json.put("id", device.getAddress());
         if (device.getBluetoothClass() != null) {
