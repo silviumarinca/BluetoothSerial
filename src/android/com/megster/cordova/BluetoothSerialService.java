@@ -283,7 +283,7 @@ public class BluetoothSerialService {
    */
   private class AcceptThread extends Thread {
     // The local server socket
-    private final BluetoothServerSocket mmServerSocket;
+    private  BluetoothServerSocket mmServerSocket=null;
     private String mSocketType;
 
     public AcceptThread(boolean secure) {
