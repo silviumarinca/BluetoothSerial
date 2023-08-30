@@ -236,7 +236,7 @@ public class BluetoothSerial extends CordovaPlugin {
       String newName = args.getString(0);
       if (ActivityCompat.checkSelfPermission(this.webView.getContext(), Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
 
-        ActivityCompat.requestPermissions(this.cordova.getActivity(), new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 225);
+        ActivityCompat.requestPermissions(this.cordova.getActivity(), new String[]{Manifest.permission.BLUETOOTH_CONNECT}, CHECK_PERMISSIONS_REQ_CODE);
         return false;
       }
       bluetoothAdapter.setName(newName);
@@ -250,7 +250,7 @@ public class BluetoothSerial extends CordovaPlugin {
 
       if (ActivityCompat.checkSelfPermission(this.webView.getContext(), Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
 
-        ActivityCompat.requestPermissions(this.cordova.getActivity(), new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 225);
+        ActivityCompat.requestPermissions(this.cordova.getActivity(), new String[]{Manifest.permission.BLUETOOTH_CONNECT}, CHECK_PERMISSIONS_REQ_CODE);
         return false;
       }
 
@@ -299,7 +299,7 @@ public class BluetoothSerial extends CordovaPlugin {
 
     if (ActivityCompat.checkSelfPermission(this.webView.getContext(), Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
 
-      ActivityCompat.requestPermissions(this.cordova.getActivity(), new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 225);
+      ActivityCompat.requestPermissions(this.cordova.getActivity(), new String[]{Manifest.permission.BLUETOOTH_CONNECT}, CHECK_PERMISSIONS_REQ_CODE);
       return;
     }
     Set<BluetoothDevice> bondedDevices = bluetoothAdapter.getBondedDevices();
@@ -347,172 +347,176 @@ public class BluetoothSerial extends CordovaPlugin {
 
     if (ActivityCompat.checkSelfPermission(this.webView.getContext(), Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
 
-      ActivityCompat.requestPermissions(this.cordova.getActivity(), new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 225);
+      ActivityCompat.requestPermissions(this.cordova.getActivity(), new String[]{Manifest.permission.BLUETOOTH_CONNECT}, CHECK_PERMISSIONS_REQ_CODE);
       return;
     }
     bluetoothAdapter.startDiscovery();
   }
 
-    private JSONObject deviceToJSON(BluetoothDevice device) throws JSONException {
-        JSONObject json = new JSONObject();
-        json.put("name", device.getName());
-        json.put("address", device.getAddress());
-        json.put("id", device.getAddress());
-        if (device.getBluetoothClass() != null) {
-            json.put("class", device.getBluetoothClass().getDeviceClass());
-        }
-        return json;
+  private JSONObject deviceToJSON(BluetoothDevice device) throws JSONException {
+    JSONObject json = new JSONObject();
+    if (ActivityCompat.checkSelfPermission(this.webView.getContext(), Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+      ActivityCompat.requestPermissions(this.cordova.getActivity(), new String[]{Manifest.permission.BLUETOOTH_CONNECT}, CHECK_PERMISSIONS_REQ_CODE);
+      return null;
     }
-
-    private void connect(CordovaArgs args, boolean secure, CallbackContext callbackContext) throws JSONException {
-        String macAddress = args.getString(0);
-        BluetoothDevice device = bluetoothAdapter.getRemoteDevice(macAddress);
-
-        if (device != null) {
-            connectCallback = callbackContext;
-            bluetoothSerialService.connect(device, secure);
-            buffer.setLength(0);
-
-            PluginResult result = new PluginResult(PluginResult.Status.NO_RESULT);
-            result.setKeepCallback(true);
-            callbackContext.sendPluginResult(result);
-
-        } else {
-            callbackContext.error("Could not connect to " + macAddress);
-        }
+    json.put("name", device.getName());
+    json.put("address", device.getAddress());
+    json.put("id", device.getAddress());
+    if (device.getBluetoothClass() != null) {
+      json.put("class", device.getBluetoothClass().getDeviceClass());
     }
+    return json;
+  }
 
-    // The Handler that gets information back from the BluetoothSerialService
-    // Original code used handler for the because it was talking to the UI.
-    // Consider replacing with normal callbacks
-    private final Handler mHandler = new Handler() {
+  private void connect(CordovaArgs args, boolean secure, CallbackContext callbackContext) throws JSONException {
+    String macAddress = args.getString(0);
+    BluetoothDevice device = bluetoothAdapter.getRemoteDevice(macAddress);
 
-         public void handleMessage(Message msg) {
-             switch (msg.what) {
-                 case MESSAGE_READ:
-                    buffer.append((String)msg.obj);
+    if (device != null) {
+      connectCallback = callbackContext;
+      bluetoothSerialService.connect(device, secure);
+      buffer.setLength(0);
 
-                    if (dataAvailableCallback != null) {
-                        sendDataToSubscriber();
-                    }
+      PluginResult result = new PluginResult(PluginResult.Status.NO_RESULT);
+      result.setKeepCallback(true);
+      callbackContext.sendPluginResult(result);
 
-                    break;
-                 case MESSAGE_READ_RAW:
-                    if (rawDataAvailableCallback != null) {
-                        byte[] bytes = (byte[]) msg.obj;
-                        sendRawDataToSubscriber(bytes);
-                    }
-                    break;
-                 case MESSAGE_STATE_CHANGE:
-
-                    if(D) Log.i(TAG, "MESSAGE_STATE_CHANGE: " + msg.arg1);
-                    switch (msg.arg1) {
-                        case BluetoothSerialService.STATE_CONNECTED:
-                            Log.i(TAG, "BluetoothSerialService.STATE_CONNECTED");
-                            notifyConnectionSuccess();
-                            break;
-                        case BluetoothSerialService.STATE_CONNECTING:
-                            Log.i(TAG, "BluetoothSerialService.STATE_CONNECTING");
-                            break;
-                        case BluetoothSerialService.STATE_LISTEN:
-                            Log.i(TAG, "BluetoothSerialService.STATE_LISTEN");
-                            break;
-                        case BluetoothSerialService.STATE_NONE:
-                            Log.i(TAG, "BluetoothSerialService.STATE_NONE");
-                            break;
-                    }
-                    break;
-                case MESSAGE_WRITE:
-                    //  byte[] writeBuf = (byte[]) msg.obj;
-                    //  String writeMessage = new String(writeBuf);
-                    //  Log.i(TAG, "Wrote: " + writeMessage);
-                    break;
-                case MESSAGE_DEVICE_NAME:
-                    Log.i(TAG, msg.getData().getString(DEVICE_NAME));
-                    break;
-                case MESSAGE_TOAST:
-                    String message = msg.getData().getString(TOAST);
-                    notifyConnectionLost(message);
-                    break;
-             }
-         }
-    };
-
-    private void notifyConnectionLost(String error) {
-        if (connectCallback != null) {
-            connectCallback.error(error);
-            connectCallback = null;
-        }
+    } else {
+      callbackContext.error("Could not connect to " + macAddress);
     }
+  }
 
-    private void notifyConnectionSuccess() {
-        if (connectCallback != null) {
-            PluginResult result = new PluginResult(PluginResult.Status.OK);
-            result.setKeepCallback(true);
-            connectCallback.sendPluginResult(result);
-        }
-    }
+  // The Handler that gets information back from the BluetoothSerialService
+  // Original code used handler for the because it was talking to the UI.
+  // Consider replacing with normal callbacks
+  private final Handler mHandler = new Handler() {
 
-    private void sendRawDataToSubscriber(byte[] data) {
-        if (data != null && data.length > 0) {
-            PluginResult result = new PluginResult(PluginResult.Status.OK, data);
-            result.setKeepCallback(true);
-            rawDataAvailableCallback.sendPluginResult(result);
-        }
-    }
+    public void handleMessage(Message msg) {
+      switch (msg.what) {
+        case MESSAGE_READ:
+          buffer.append((String)msg.obj);
 
-    private void sendDataToSubscriber() {
-        String data = readUntil(delimiter);
-        if (data != null && data.length() > 0) {
-            PluginResult result = new PluginResult(PluginResult.Status.OK, data);
-            result.setKeepCallback(true);
-            dataAvailableCallback.sendPluginResult(result);
-
+          if (dataAvailableCallback != null) {
             sendDataToSubscriber();
-        }
+          }
+
+          break;
+        case MESSAGE_READ_RAW:
+          if (rawDataAvailableCallback != null) {
+            byte[] bytes = (byte[]) msg.obj;
+            sendRawDataToSubscriber(bytes);
+          }
+          break;
+        case MESSAGE_STATE_CHANGE:
+
+          if(D) Log.i(TAG, "MESSAGE_STATE_CHANGE: " + msg.arg1);
+          switch (msg.arg1) {
+            case BluetoothSerialService.STATE_CONNECTED:
+              Log.i(TAG, "BluetoothSerialService.STATE_CONNECTED");
+              notifyConnectionSuccess();
+              break;
+            case BluetoothSerialService.STATE_CONNECTING:
+              Log.i(TAG, "BluetoothSerialService.STATE_CONNECTING");
+              break;
+            case BluetoothSerialService.STATE_LISTEN:
+              Log.i(TAG, "BluetoothSerialService.STATE_LISTEN");
+              break;
+            case BluetoothSerialService.STATE_NONE:
+              Log.i(TAG, "BluetoothSerialService.STATE_NONE");
+              break;
+          }
+          break;
+        case MESSAGE_WRITE:
+          //  byte[] writeBuf = (byte[]) msg.obj;
+          //  String writeMessage = new String(writeBuf);
+          //  Log.i(TAG, "Wrote: " + writeMessage);
+          break;
+        case MESSAGE_DEVICE_NAME:
+          Log.i(TAG, msg.getData().getString(DEVICE_NAME));
+          break;
+        case MESSAGE_TOAST:
+          String message = msg.getData().getString(TOAST);
+          notifyConnectionLost(message);
+          break;
+      }
+    }
+  };
+
+  private void notifyConnectionLost(String error) {
+    if (connectCallback != null) {
+      connectCallback.error(error);
+      connectCallback = null;
+    }
+  }
+
+  private void notifyConnectionSuccess() {
+    if (connectCallback != null) {
+      PluginResult result = new PluginResult(PluginResult.Status.OK);
+      result.setKeepCallback(true);
+      connectCallback.sendPluginResult(result);
+    }
+  }
+
+  private void sendRawDataToSubscriber(byte[] data) {
+    if (data != null && data.length > 0) {
+      PluginResult result = new PluginResult(PluginResult.Status.OK, data);
+      result.setKeepCallback(true);
+      rawDataAvailableCallback.sendPluginResult(result);
+    }
+  }
+
+  private void sendDataToSubscriber() {
+    String data = readUntil(delimiter);
+    if (data != null && data.length() > 0) {
+      PluginResult result = new PluginResult(PluginResult.Status.OK, data);
+      result.setKeepCallback(true);
+      dataAvailableCallback.sendPluginResult(result);
+
+      sendDataToSubscriber();
+    }
+  }
+
+  private int available() {
+    return buffer.length();
+  }
+
+  private String read() {
+    int length = buffer.length();
+    String data = buffer.substring(0, length);
+    buffer.delete(0, length);
+    return data;
+  }
+
+  private String readUntil(String c) {
+    String data = "";
+    int index = buffer.indexOf(c, 0);
+    if (index > -1) {
+      data = buffer.substring(0, index + c.length());
+      buffer.delete(0, index + c.length());
+    }
+    return data;
+  }
+
+  @Override
+  public void onRequestPermissionResult(int requestCode, String[] permissions,
+                                        int[] grantResults) throws JSONException {
+
+    for(int result:grantResults) {
+      if(result == PackageManager.PERMISSION_DENIED) {
+        LOG.d(TAG, "User *rejected* location permission");
+        this.permissionCallback.sendPluginResult(new PluginResult(
+          PluginResult.Status.ERROR,
+          "Location permission is required to discover unpaired devices.")
+        );
+        return;
+      }
     }
 
-    private int available() {
-        return buffer.length();
+    switch(requestCode) {
+      case CHECK_PERMISSIONS_REQ_CODE:
+        LOG.d(TAG, "User granted location permission");
+        discoverUnpairedDevices(permissionCallback);
+        break;
     }
-
-    private String read() {
-        int length = buffer.length();
-        String data = buffer.substring(0, length);
-        buffer.delete(0, length);
-        return data;
-    }
-
-    private String readUntil(String c) {
-        String data = "";
-        int index = buffer.indexOf(c, 0);
-        if (index > -1) {
-            data = buffer.substring(0, index + c.length());
-            buffer.delete(0, index + c.length());
-        }
-        return data;
-    }
-
-    @Override
-    public void onRequestPermissionResult(int requestCode, String[] permissions,
-                                          int[] grantResults) throws JSONException {
-
-        for(int result:grantResults) {
-            if(result == PackageManager.PERMISSION_DENIED) {
-                LOG.d(TAG, "User *rejected* location permission");
-                this.permissionCallback.sendPluginResult(new PluginResult(
-                        PluginResult.Status.ERROR,
-                        "Location permission is required to discover unpaired devices.")
-                    );
-                return;
-            }
-        }
-
-        switch(requestCode) {
-            case CHECK_PERMISSIONS_REQ_CODE:
-                LOG.d(TAG, "User granted location permission");
-                discoverUnpairedDevices(permissionCallback);
-                break;
-        }
-    }
+  }
 }
