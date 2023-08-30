@@ -102,7 +102,7 @@ public class BluetoothSerial extends CordovaPlugin {
     }
 
     if (bluetoothSerialService == null) {
-      bluetoothSerialService = new BluetoothSerialService(mHandler);
+      bluetoothSerialService = new BluetoothSerialService(mHandler,this.cordova.getActivity());
     }
 
     boolean validAction = true;
